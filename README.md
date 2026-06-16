@@ -12,6 +12,7 @@ npm run test       # vitest unit tests
 npm run preview    # serve the production build
 ```
 
+s
 ### Desktop (Windows)
 
 ```bash
