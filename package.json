@@ -2,7 +2,7 @@
   "name": "canvas",
   "productName": "Canvas",
   "version": "2.0.0",
-  "description": "Mind Canvas — a local-first drawing and diagramming tool with a hand-drawn aesthetic.",
+  "description": "Canvas — a local-first drawing and diagramming tool with a hand-drawn aesthetic.",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",

@@ -1,4 +1,4 @@
-/* Mind Canvas — Electron main process (Windows desktop build). */
+/* Canvas — Electron main process (Windows desktop build). */
 const { app, BrowserWindow, Tray, Menu, globalShortcut, shell, nativeImage } = require('electron');
 const path = require('path');
 
@@ -87,7 +87,7 @@ function createTray() {
   let image = nativeImage.createFromPath(iconPath);
   if (!image.isEmpty()) image = image.resize({ width: 16, height: 16 });
   tray = new Tray(image);
-  tray.setToolTip('Mind Canvas');
+  tray.setToolTip('Canvas');
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Show Canvas (Ctrl+Alt+C)', click: () => { mainWindow.show(); mainWindow.focus(); } },

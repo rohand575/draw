@@ -1,4 +1,4 @@
-# Mind Canvas
+# Canvas
 
 A local-first infinite canvas for drawing and diagramming with a hand-drawn aesthetic — rebuilt as a premium, modern application. Shapes, smart connectors, frames, syntax-highlighted code blocks, embeds, AI-assisted drawing, multi-canvas documents, and full offline support.
 

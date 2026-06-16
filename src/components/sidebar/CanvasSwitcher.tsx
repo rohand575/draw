@@ -56,7 +56,7 @@ export function CanvasSwitcher() {
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
           <Icon name="canvasDoc" size={16} strokeWidth={2} />
         </span>
-        <span className="max-w-44 truncate text-[13.5px] font-semibold">{current?.name ?? 'Mind Canvas'}</span>
+        <span className="max-w-44 truncate text-[13.5px] font-semibold">{current?.name ?? 'Canvas'}</span>
         <span
           className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${isSaving ? 'bg-amber-400' : 'bg-emerald-400/80'}`}
           title={isSaving ? 'Saving…' : 'All changes saved'}

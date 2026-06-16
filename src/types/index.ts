@@ -1,4 +1,4 @@
-/** Shared types for Mind Canvas. */
+/** Shared types for Canvas. */
 
 export type ElementType =
   | 'rectangle'

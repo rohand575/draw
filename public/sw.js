@@ -1,5 +1,5 @@
-/* Mind Canvas service worker — offline-first PWA caching. */
-const CACHE_NAME = 'mind-canvas-v2';
+/* Canvas service worker — offline-first PWA caching. */
+const CACHE_NAME = 'canvas-v3';
 const PRECACHE = ['./', './index.html'];
 
 self.addEventListener('install', (event) => {
