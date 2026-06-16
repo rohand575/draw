@@ -1,0 +1,56 @@
+{
+  "name": "canvas",
+  "productName": "Canvas",
+  "version": "2.0.0",
+  "description": "Mind Canvas — a local-first drawing and diagramming tool with a hand-drawn aesthetic.",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "icon": "node scripts/gen-icon.cjs",
+    "electron:dev": "cross-env ELECTRON=true VITE_DEV=true electron .",
+    "electron:build": "cross-env ELECTRON=true vite build && electron-builder --win"
+  },
+  "dependencies": {
+    "idb": "^8.0.3",
+    "nanoid": "^5.1.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "roughjs": "^4.6.6",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.16",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "cross-env": "^10.1.0",
+    "electron": "^41.0.0",
+    "electron-builder": "^26.0.12",
+    "tailwindcss": "^4.1.16",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4",
+    "vitest": "^4.0.6"
+  },
+  "build": {
+    "appId": "com.canvas.app",
+    "productName": "Canvas",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "electron/**/*", "public/icon.png"],
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Canvas"
+    }
+  }
+}
