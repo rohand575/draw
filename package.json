@@ -17,6 +17,7 @@
     "electron:build": "cross-env ELECTRON=true vite build && electron-builder --win"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "idb": "^8.0.3",
     "nanoid": "^5.1.5",
     "react": "^19.2.0",
@@ -40,8 +41,14 @@
   "build": {
     "appId": "com.canvas.app",
     "productName": "Canvas",
-    "directories": { "output": "release" },
-    "files": ["dist/**/*", "electron/**/*", "public/icon.png"],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "public/icon.png"
+    ],
     "win": {
       "target": "nsis",
       "icon": "public/icon.png"

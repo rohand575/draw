@@ -46,7 +46,11 @@ export type IconName =
   | 'distributeH'
   | 'distributeV'
   | 'pencilEdit'
-  | 'canvasDoc';
+  | 'canvasDoc'
+  | 'user'
+  | 'cloud'
+  | 'cloudOff'
+  | 'signOut';
 
 const paths: Record<IconName, JSX.Element> = {
   select: <path d="M5 3l14 8-6.5 1.5L9 19 5 3z" />,
@@ -147,6 +151,20 @@ const paths: Record<IconName, JSX.Element> = {
       <circle cx="15.5" cy="15" r="1.4" fill="currentColor" stroke="none" />
     </>
   ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="3.8" />
+      <path d="M4.5 20c0-3.9 3.4-6 7.5-6s7.5 2.1 7.5 6" />
+    </>
+  ),
+  cloud: <path d="M7 18h9.2a3.6 3.6 0 0 0 .4-7.18 5.2 5.2 0 0 0-10-1.36A3.9 3.9 0 0 0 7 18z" />,
+  cloudOff: (
+    <>
+      <path d="M3 3l18 18" />
+      <path d="M8.6 6.65a5.2 5.2 0 0 1 8 3.17 3.6 3.6 0 0 1 2 5.96M16 18H7a3.9 3.9 0 0 1-.4-7.79" />
+    </>
+  ),
+  signOut: <path d="M14 4h3.5A1.5 1.5 0 0 1 19 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14M10 16l-4-4 4-4M6 12h9" />,
 };
 
 interface IconProps {

@@ -31,6 +31,12 @@ export async function getCanvasDocument(id: string): Promise<CanvasDocument | un
   return db.get(STORE_NAME, id) as Promise<CanvasDocument | undefined>;
 }
 
+/** Full documents (not just metas) — used by cloud sync to reconcile/upload. */
+export async function getAllCanvasDocuments(): Promise<CanvasDocument[]> {
+  const db = await getDB();
+  return (await db.getAll(STORE_NAME)) as CanvasDocument[];
+}
+
 export async function putCanvasDocument(doc: CanvasDocument): Promise<void> {
   const db = await getDB();
   await db.put(STORE_NAME, doc);

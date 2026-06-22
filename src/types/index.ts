@@ -102,6 +102,8 @@ export interface CanvasDocument {
   canvasState: CanvasState;
   createdAt: number;
   updatedAt: number;
+  /** Soft-delete tombstone for cross-device sync; absent/false means live. */
+  deleted?: boolean;
 }
 
 export interface CanvasDocumentMeta {

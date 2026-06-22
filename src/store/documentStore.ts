@@ -7,6 +7,7 @@ import {
   getCanvasDocument,
   putCanvasDocument,
 } from '../utils/persistence';
+import { queueDelete, queuePush } from '../utils/cloudSync';
 import { useElementStore } from './elementStore';
 import { useCanvasStore } from './canvasStore';
 import { useHistoryStore } from './historyStore';
@@ -24,6 +25,8 @@ interface DocumentStore {
   openCanvas: (id: string) => Promise<void>;
   renameCanvas: (id: string, name: string) => Promise<void>;
   deleteCanvas: (id: string) => Promise<void>;
+  /** Re-sync the in-memory list/open canvas from storage after a cloud merge. */
+  refreshAfterSync: (reapplyCurrent: boolean) => Promise<void>;
 }
 
 /** Serial save queue — concurrent saves never interleave. */
@@ -102,6 +105,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         if (!get().canvasList.some((m) => m.id === doc.id)) return;
         set({ isSaving: true });
         await putCanvasDocument(doc);
+        queuePush(doc); // mirror to cloud (no-op when signed out)
         set((s) => ({
           isSaving: false,
           canvasList: s.canvasList
@@ -152,12 +156,17 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       canvasList: s.canvasList.map((m) => (m.id === id ? { ...m, name: trimmed } : m)),
     }));
     const doc = await getCanvasDocument(id);
-    if (doc) await putCanvasDocument({ ...doc, name: trimmed, updatedAt: Date.now() });
+    if (doc) {
+      const updated = { ...doc, name: trimmed, updatedAt: Date.now() };
+      await putCanvasDocument(updated);
+      queuePush(updated);
+    }
   },
 
   deleteCanvas: async (id) => {
     const { currentCanvasId, canvasList } = get();
     await deleteCanvasDocument(id);
+    queueDelete(id); // tombstone in cloud (no-op when signed out)
     const remaining = canvasList.filter((m) => m.id !== id);
     set({ canvasList: remaining });
 
@@ -173,6 +182,34 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         set({ currentCanvasId: null });
         await get().createCanvas('Untitled 1');
       }
+    }
+  },
+
+  refreshAfterSync: async (reapplyCurrent) => {
+    const metas = await getAllCanvasMetas();
+    const prevCurrent = get().currentCanvasId;
+
+    // Everything was removed on another device — start fresh.
+    if (metas.length === 0) {
+      set({ canvasList: [], currentCanvasId: null });
+      await get().createCanvas('Untitled 1');
+      return;
+    }
+
+    set({ canvasList: metas });
+
+    const stillExists = prevCurrent != null && metas.some((m) => m.id === prevCurrent);
+    if (!stillExists) {
+      // The open canvas was deleted elsewhere — open the most recent one.
+      const doc = await getCanvasDocument(metas[0].id);
+      if (doc) {
+        applyDocument(doc);
+        set({ currentCanvasId: doc.id });
+      }
+    } else if (reapplyCurrent) {
+      // Sign-in merge: reflect any pulled changes to the open canvas.
+      const doc = await getCanvasDocument(prevCurrent);
+      if (doc) applyDocument(doc);
     }
   },
 }));

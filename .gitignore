@@ -1,4 +1,7 @@
 node_modules/
 dist/
+dist_verify/
 release/
 *.log
+.env
+.env.local

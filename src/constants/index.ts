@@ -28,6 +28,11 @@ export const STORE_NAME = 'canvases';
 export const AUTOSAVE_DEBOUNCE_MS = 500;
 export const DEFAULT_CANVAS_ID = 'default';
 
+/** Cloud sync: how long after the last edit a canvas is pushed to Supabase. */
+export const CLOUD_PUSH_DEBOUNCE_MS = 2500;
+export const LS_PENDING_PUSH = 'canvas-cloud-pending-push';
+export const LS_PENDING_DELETE = 'canvas-cloud-pending-delete';
+
 export const MAX_HISTORY = 50;
 export const IMAGE_CACHE_MAX = 60;
 export const IMAGE_PASTE_MAX_DIM = 800;

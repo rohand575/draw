@@ -12,6 +12,8 @@ import { StylePanel } from './components/toolbar/StylePanel';
 import { ActionBar } from './components/toolbar/ActionBar';
 import { ZoomControls } from './components/toolbar/ZoomControls';
 import { CanvasSwitcher } from './components/sidebar/CanvasSwitcher';
+import { AccountButton } from './components/auth/AccountButton';
+import { AuthDialog } from './components/auth/AuthDialog';
 import { ShapeLibrary } from './components/ui/ShapeLibrary';
 import { ShortcutsDialog } from './components/ui/ShortcutsDialog';
 import { AIDrawPanel } from './components/ai/AIDrawPanel';
@@ -53,7 +55,10 @@ export default function App() {
           <div className="absolute left-1/2 -translate-x-1/2">
             <StylePanel />
           </div>
-          <ActionBar />
+          <div className="flex items-start gap-2.5">
+            <AccountButton />
+            <ActionBar />
+          </div>
         </div>
 
         <div className="pointer-events-none absolute top-1/2 left-4 z-40 -translate-y-1/2">
@@ -69,6 +74,7 @@ export default function App() {
         <AIDrawPanel />
         <FindBar />
         <ShortcutsDialog />
+        <AuthDialog />
       </div>
     </div>
   );
