@@ -53,45 +53,39 @@ export function AccountButton() {
 
   if (status === 'signed-out') {
     return (
-      <>
-        <div className="toolbar-divider mx-1.5" />
-        <button
-          type="button"
-          onClick={openDialog}
-          className="flex h-9 items-center gap-2 rounded-xl border border-black/[0.08] px-3 text-[13px] font-medium transition-colors hover:bg-black/[0.045] active:scale-[0.97] dark:border-white/[0.1] dark:hover:bg-white/[0.06]"
-        >
-          <Icon name="user" size={15} strokeWidth={2} className="opacity-70" />
-          Sign in
-        </button>
-      </>
+      <button
+        type="button"
+        onClick={openDialog}
+        title="Sign in"
+        aria-label="Sign in"
+        className="panel pointer-events-auto flex h-11 w-11 items-center justify-center text-gray-600 transition-transform hover:text-gray-900 active:scale-[0.96] dark:text-gray-300 dark:hover:text-white"
+      >
+        <Icon name="user" size={19} strokeWidth={1.9} />
+      </button>
     );
   }
 
   const initial = (user?.email?.trim()?.[0] ?? 'U').toUpperCase();
 
   return (
-    <>
-      <div className="toolbar-divider mx-1.5" />
-      <div ref={rootRef} className="relative">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-haspopup="menu"
-          title={syncLabel(sync.state, sync.lastSyncedAt)}
-          className="flex h-9 items-center gap-1.5 rounded-xl pr-1.5 pl-1 transition-colors hover:bg-black/[0.045] active:scale-[0.97] dark:hover:bg-white/[0.06]"
-        >
-          <span className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-[12px] font-semibold text-white shadow-[0_2px_6px_-1px_rgb(79_70_229/0.5)] ring-1 ring-white/15">
-            {initial}
-            <span
-              className={`absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white transition-colors dark:border-[#181820] ${SYNC_DOT[sync.state]}`}
-            />
-          </span>
-          <Icon name="chevronDown" size={14} className={`opacity-40 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
+    <div ref={rootRef} className="pointer-events-auto relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Account"
+        title={syncLabel(sync.state, sync.lastSyncedAt)}
+        className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-[15px] font-semibold text-white shadow-[0_1px_2px_rgb(16_16_20/0.06),0_6px_16px_-4px_rgb(79_70_229/0.55)] ring-1 ring-white/15 transition-transform active:scale-[0.96]"
+      >
+        {initial}
+        <span
+          className={`absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white transition-colors dark:border-[#15151b] ${SYNC_DOT[sync.state]}`}
+        />
+      </button>
 
       {open && (
-        <div className="panel animate-in absolute top-full right-0 z-50 mt-2 w-[270px] overflow-hidden">
+        <div className="panel animate-in absolute top-0 left-full z-50 ml-2 w-[270px] overflow-hidden">
           <div className="flex items-center gap-3 px-4 pt-4 pb-3.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-[15px] font-semibold text-white shadow-[0_2px_6px_-1px_rgb(79_70_229/0.5)] ring-1 ring-white/15">
               {initial}
@@ -128,9 +122,8 @@ export function AccountButton() {
               Sign out
             </button>
           </div>
-          </div>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+    </div>
   );
 }

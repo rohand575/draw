@@ -16,7 +16,6 @@ import {
 import { importProjectFile } from '../../utils/sanitizeElements';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
-import { AccountButton } from '../auth/AccountButton';
 
 export function ActionBar() {
   const theme = useCanvasStore((s) => s.theme);
@@ -182,8 +181,6 @@ export function ActionBar() {
       <IconButton label="Keyboard shortcuts" shortcut="?" onClick={() => useCanvasStore.getState().toggleShortcuts()}>
         <Icon name="help" size={16} />
       </IconButton>
-
-      <AccountButton />
     </div>
   );
 }

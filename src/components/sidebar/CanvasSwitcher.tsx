@@ -65,7 +65,7 @@ export function CanvasSwitcher() {
       </button>
 
       {open && (
-        <div className="panel animate-in absolute top-full left-0 z-50 mt-2 w-[330px] overflow-hidden">
+        <div className="panel animate-in absolute top-0 left-full z-50 ml-2 w-[330px] overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-3.5 pb-1.5">
             <span className="text-[11px] font-semibold tracking-widest uppercase opacity-45">Canvases</span>
             <span className="text-[11px] tabular-nums opacity-35">{canvasList.length}</span>
