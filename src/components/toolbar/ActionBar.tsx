@@ -16,6 +16,7 @@ import {
 import { importProjectFile } from '../../utils/sanitizeElements';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 export function ActionBar() {
   const theme = useCanvasStore((s) => s.theme);
@@ -26,6 +27,8 @@ export function ActionBar() {
   const hasSelection = useToolStore((s) => s.selectedIds.length > 0);
   const [exportOpen, setExportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [importError, setImportError] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +46,7 @@ export function ActionBar() {
     const existing = new Set(useElementStore.getState().elements.map((el) => el.id));
     const result = importProjectFile(text, existing);
     if (!result) {
-      alert('Invalid project file');
+      setImportError(true);
       return;
     }
     historyActions.saveSnapshot();
@@ -101,6 +104,7 @@ export function ActionBar() {
   ];
 
   return (
+    <>
     <div className="panel pointer-events-auto flex h-12 items-center gap-1 px-2">
       <IconButton label="Undo" shortcut="Ctrl+Z" disabled={!canUndo} onClick={historyActions.undo}>
         <Icon name="undo" size={16} />
@@ -114,13 +118,7 @@ export function ActionBar() {
       <IconButton label="Delete selection" shortcut="Del" disabled={!hasSelection} danger onClick={deleteSelection}>
         <Icon name="trash" size={16} />
       </IconButton>
-      <IconButton
-        label="Clear canvas"
-        danger
-        onClick={() => {
-          if (confirm('Clear the entire canvas? You can undo with Ctrl+Z.')) clearCanvas();
-        }}
-      >
+      <IconButton label="Clear canvas" danger onClick={() => setConfirmClear(true)}>
         <Icon name="broom" size={16} />
       </IconButton>
 
@@ -182,5 +180,33 @@ export function ActionBar() {
         <Icon name="help" size={16} />
       </IconButton>
     </div>
+
+      {confirmClear && (
+        <ConfirmDialog
+          danger
+          icon="broom"
+          title="Clear the canvas?"
+          description="Every element on this canvas will be removed. You can undo this with Ctrl+Z."
+          confirmLabel="Clear canvas"
+          onConfirm={() => {
+            clearCanvas();
+            setConfirmClear(false);
+          }}
+          onCancel={() => setConfirmClear(false)}
+        />
+      )}
+
+      {importError && (
+        <ConfirmDialog
+          hideCancel
+          icon="folder"
+          title="Couldn’t open that file"
+          description="The file isn’t a valid Canvas project (.mcv) or JSON export. Try a different file."
+          confirmLabel="OK"
+          onConfirm={() => setImportError(false)}
+          onCancel={() => setImportError(false)}
+        />
+      )}
+    </>
   );
 }

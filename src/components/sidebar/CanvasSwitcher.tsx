@@ -2,16 +2,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDocumentStore } from '../../store/documentStore';
 import { Icon } from '../ui/Icon';
+import { Menu } from '../ui/Menu';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 export function CanvasSwitcher() {
   const { currentCanvasId, canvasList, isSaving } = useDocumentStore();
   const [open, setOpen] = useState(false);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<DOMRect | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const current = canvasList.find((m) => m.id === currentCanvasId);
+  const menuMeta = canvasList.find((m) => m.id === menuFor);
 
   useEffect(() => {
     if (!open) return;
@@ -101,10 +106,17 @@ export function CanvasSwitcher() {
                   ) : (
                     <button
                       type="button"
-                      className="flex-1 truncate text-left text-[13px]"
+                      className={`flex-1 truncate text-left text-[13px] ${active ? 'cursor-text' : ''}`}
+                      title={active ? 'Click to rename' : 'Open canvas'}
                       onClick={() => {
-                        if (!active) void useDocumentStore.getState().openCanvas(meta.id);
-                        setOpen(false);
+                        if (active) {
+                          // Already on this canvas → click the name to rename it inline.
+                          setRenamingId(meta.id);
+                          setRenameValue(meta.name);
+                        } else {
+                          void useDocumentStore.getState().openCanvas(meta.id);
+                          setOpen(false);
+                        }
                       }}
                       onDoubleClick={() => {
                         setRenamingId(meta.id);
@@ -116,43 +128,19 @@ export function CanvasSwitcher() {
                   )}
                   {active && renamingId !== meta.id && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />}
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      aria-label={`Options for ${meta.name}`}
-                      className="ui-btn h-6 w-6 opacity-0 group-hover:opacity-60 hover:!opacity-100"
-                      onClick={() => setMenuFor(menuFor === meta.id ? null : meta.id)}
-                    >
-                      <Icon name="dots" size={14} />
-                    </button>
-                    {menuFor === meta.id && (
-                      <div className="panel animate-in absolute top-full right-0 z-50 mt-1 min-w-32 py-1">
-                        <button
-                          type="button"
-                          className="block w-full px-3 py-1.5 text-left text-[12.5px] hover:bg-black/[0.05] dark:hover:bg-white/[0.07]"
-                          onClick={() => {
-                            setMenuFor(null);
-                            setRenamingId(meta.id);
-                            setRenameValue(meta.name);
-                          }}
-                        >
-                          Rename
-                        </button>
-                        <button
-                          type="button"
-                          className="block w-full px-3 py-1.5 text-left text-[12.5px] text-red-500 hover:bg-red-500/10"
-                          onClick={() => {
-                            setMenuFor(null);
-                            if (confirm(`Delete "${meta.name}"? This cannot be undone.`)) {
-                              void useDocumentStore.getState().deleteCanvas(meta.id);
-                            }
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Options for ${meta.name}`}
+                    aria-haspopup="menu"
+                    className={`ui-btn h-6 w-6 hover:!opacity-100 ${menuFor === meta.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      setMenuAnchor(e.currentTarget.getBoundingClientRect());
+                      setMenuFor((prev) => (prev === meta.id ? null : meta.id));
+                    }}
+                  >
+                    <Icon name="dots" size={14} />
+                  </button>
                 </div>
               );
             })}
@@ -172,6 +160,45 @@ export function CanvasSwitcher() {
             </button>
           </div>
         </div>
+      )}
+
+      {menuFor && menuAnchor && menuMeta && (
+        <Menu
+          anchor={menuAnchor}
+          onClose={() => setMenuFor(null)}
+          items={[
+            {
+              label: 'Rename',
+              icon: 'pencilEdit',
+              onSelect: () => {
+                setRenamingId(menuMeta.id);
+                setRenameValue(menuMeta.name);
+              },
+            },
+            {
+              label: 'Delete',
+              icon: 'trash',
+              danger: true,
+              onSelect: () => setConfirmDelete({ id: menuMeta.id, name: menuMeta.name }),
+            },
+          ]}
+        />
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          danger
+          icon="trash"
+          title={`Delete “${confirmDelete.name}”?`}
+          description="This canvas and everything on it will be permanently removed. This can’t be undone."
+          confirmLabel="Delete"
+          onConfirm={() => {
+            void useDocumentStore.getState().deleteCanvas(confirmDelete.id);
+            setConfirmDelete(null);
+            setOpen(false);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   );
