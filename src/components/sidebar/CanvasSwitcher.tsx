@@ -51,17 +51,17 @@ export function CanvasSwitcher() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="panel flex h-11 items-center gap-2.5 pr-3 pl-2.5 transition-transform active:scale-[0.98]"
+        className="panel flex h-12 items-center gap-2.5 py-2 pr-3 pl-2 transition-transform active:scale-[0.98]"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-[0_2px_6px_-1px_rgb(79_70_229/0.5)] ring-1 ring-white/15">
           <Icon name="canvasDoc" size={16} strokeWidth={2} />
         </span>
-        <span className="max-w-44 truncate text-[13.5px] font-semibold">{current?.name ?? 'Canvas'}</span>
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${isSaving ? 'bg-amber-400' : 'bg-emerald-400/80'}`}
-          title={isSaving ? 'Saving…' : 'All changes saved'}
-        />
-        <Icon name="chevronDown" size={13} className={`opacity-45 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="max-w-40 truncate text-[13.5px] font-semibold tracking-[-0.01em]">{current?.name ?? 'Canvas'}</span>
+        <span className="flex items-center gap-1.5 text-[11.5px] font-medium opacity-50" title={isSaving ? 'Saving…' : 'All changes saved'}>
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${isSaving ? 'bg-amber-400' : 'bg-emerald-400/80'}`} />
+          {isSaving ? 'Saving…' : 'Saved'}
+        </span>
+        <Icon name="chevronDown" size={14} className={`opacity-40 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (

@@ -12,7 +12,6 @@ import { StylePanel } from './components/toolbar/StylePanel';
 import { ActionBar } from './components/toolbar/ActionBar';
 import { ZoomControls } from './components/toolbar/ZoomControls';
 import { CanvasSwitcher } from './components/sidebar/CanvasSwitcher';
-import { AccountButton } from './components/auth/AccountButton';
 import { AuthDialog } from './components/auth/AuthDialog';
 import { ShapeLibrary } from './components/ui/ShapeLibrary';
 import { ShortcutsDialog } from './components/ui/ShortcutsDialog';
@@ -50,13 +49,14 @@ export default function App() {
         <EmptyState />
 
         {/* Floating chrome */}
-        <div className="pointer-events-none absolute inset-x-0 top-4 z-40 flex items-start justify-between gap-3 px-4">
-          <CanvasSwitcher />
-          <div className="absolute left-1/2 -translate-x-1/2">
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-40 flex items-start gap-3 px-4">
+          <div className="shrink-0">
+            <CanvasSwitcher />
+          </div>
+          <div className="flex min-w-0 flex-1 justify-center">
             <StylePanel />
           </div>
-          <div className="flex items-start gap-2.5">
-            <AccountButton />
+          <div className="shrink-0">
             <ActionBar />
           </div>
         </div>

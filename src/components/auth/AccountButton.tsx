@@ -53,43 +53,57 @@ export function AccountButton() {
 
   if (status === 'signed-out') {
     return (
-      <button
-        type="button"
-        onClick={openDialog}
-        className="panel pointer-events-auto flex h-11 items-center gap-2 px-3.5 text-[13px] font-semibold transition-transform active:scale-[0.98]"
-      >
-        <Icon name="user" size={16} />
-        Sign in
-      </button>
+      <>
+        <div className="toolbar-divider mx-1.5" />
+        <button
+          type="button"
+          onClick={openDialog}
+          className="flex h-9 items-center gap-2 rounded-xl border border-black/[0.08] px-3 text-[13px] font-medium transition-colors hover:bg-black/[0.045] active:scale-[0.97] dark:border-white/[0.1] dark:hover:bg-white/[0.06]"
+        >
+          <Icon name="user" size={15} strokeWidth={2} className="opacity-70" />
+          Sign in
+        </button>
+      </>
     );
   }
 
+  const initial = (user?.email?.trim()?.[0] ?? 'U').toUpperCase();
+
   return (
-    <div ref={rootRef} className="pointer-events-auto relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        title={syncLabel(sync.state, sync.lastSyncedAt)}
-        className="panel flex h-11 items-center gap-2 px-2.5 transition-transform active:scale-[0.98]"
-      >
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
-          <Icon name="user" size={15} strokeWidth={2} />
-        </span>
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${SYNC_DOT[sync.state]}`} />
-        <Icon name="chevronDown" size={13} className={`opacity-45 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+    <>
+      <div className="toolbar-divider mx-1.5" />
+      <div ref={rootRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          title={syncLabel(sync.state, sync.lastSyncedAt)}
+          className="flex h-9 items-center gap-1.5 rounded-xl pr-1.5 pl-1 transition-colors hover:bg-black/[0.045] active:scale-[0.97] dark:hover:bg-white/[0.06]"
+        >
+          <span className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-[12px] font-semibold text-white shadow-[0_2px_6px_-1px_rgb(79_70_229/0.5)] ring-1 ring-white/15">
+            {initial}
+            <span
+              className={`absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white transition-colors dark:border-[#181820] ${SYNC_DOT[sync.state]}`}
+            />
+          </span>
+          <Icon name="chevronDown" size={14} className={`opacity-40 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
 
       {open && (
         <div className="panel animate-in absolute top-full right-0 z-50 mt-2 w-[270px] overflow-hidden">
-          <div className="px-4 pt-3.5 pb-3">
-            <p className="truncate text-[13px] font-semibold">{user?.email ?? 'Signed in'}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] opacity-60">
-              <span className={`h-1.5 w-1.5 rounded-full ${SYNC_DOT[sync.state]}`} />
-              {syncLabel(sync.state, sync.lastSyncedAt)}
-              {sync.pendingCount > 0 && ` · ${sync.pendingCount} pending`}
-            </p>
+          <div className="flex items-center gap-3 px-4 pt-4 pb-3.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-[15px] font-semibold text-white shadow-[0_2px_6px_-1px_rgb(79_70_229/0.5)] ring-1 ring-white/15">
+              {initial}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-semibold">{user?.email ?? 'Signed in'}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] opacity-60">
+                <span className={`h-1.5 w-1.5 rounded-full ${SYNC_DOT[sync.state]}`} />
+                {syncLabel(sync.state, sync.lastSyncedAt)}
+                {sync.pendingCount > 0 && ` · ${sync.pendingCount} pending`}
+              </p>
+            </div>
           </div>
 
           <div className="border-t border-black/[0.06] p-1.5 dark:border-white/[0.07]">
@@ -114,8 +128,9 @@ export function AccountButton() {
               Sign out
             </button>
           </div>
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

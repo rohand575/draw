@@ -16,6 +16,7 @@ import {
 import { importProjectFile } from '../../utils/sanitizeElements';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
+import { AccountButton } from '../auth/AccountButton';
 
 export function ActionBar() {
   const theme = useCanvasStore((s) => s.theme);
@@ -101,7 +102,7 @@ export function ActionBar() {
   ];
 
   return (
-    <div className="panel pointer-events-auto flex items-center gap-0.5 px-1.5 py-1">
+    <div className="panel pointer-events-auto flex h-12 items-center gap-1 px-2">
       <IconButton label="Undo" shortcut="Ctrl+Z" disabled={!canUndo} onClick={historyActions.undo}>
         <Icon name="undo" size={16} />
       </IconButton>
@@ -109,7 +110,7 @@ export function ActionBar() {
         <Icon name="redo" size={16} />
       </IconButton>
 
-      <div className="toolbar-divider" />
+      <div className="toolbar-divider mx-1.5" />
 
       <IconButton label="Delete selection" shortcut="Del" disabled={!hasSelection} danger onClick={deleteSelection}>
         <Icon name="trash" size={16} />
@@ -124,7 +125,7 @@ export function ActionBar() {
         <Icon name="broom" size={16} />
       </IconButton>
 
-      <div className="toolbar-divider" />
+      <div className="toolbar-divider mx-1.5" />
 
       <IconButton label="Toggle grid" shortcut="G" active={showGrid} onClick={() => useCanvasStore.getState().toggleGrid()}>
         <Icon name="grid" size={16} />
@@ -136,7 +137,7 @@ export function ActionBar() {
         <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} />
       </IconButton>
 
-      <div className="toolbar-divider" />
+      <div className="toolbar-divider mx-1.5" />
 
       <IconButton label="Open project (.mcv / .json)" onClick={() => fileRef.current?.click()}>
         <Icon name="folder" size={16} />
@@ -176,11 +177,13 @@ export function ActionBar() {
         )}
       </div>
 
-      <div className="toolbar-divider" />
+      <div className="toolbar-divider mx-1.5" />
 
       <IconButton label="Keyboard shortcuts" shortcut="?" onClick={() => useCanvasStore.getState().toggleShortcuts()}>
         <Icon name="help" size={16} />
       </IconButton>
+
+      <AccountButton />
     </div>
   );
 }
