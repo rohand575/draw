@@ -28,8 +28,12 @@ export const STORE_NAME = 'canvases';
 export const AUTOSAVE_DEBOUNCE_MS = 500;
 export const DEFAULT_CANVAS_ID = 'default';
 
-/** Cloud sync: how long after the last edit a canvas is pushed to Supabase. */
-export const CLOUD_PUSH_DEBOUNCE_MS = 2500;
+/** Cloud sync: how long after the last edit a canvas is pushed to Supabase.
+ *  Kept short so signed-in edits propagate to other devices near-instantly; a
+ *  drag still coalesces into a single write thanks to the debounce. */
+export const CLOUD_PUSH_DEBOUNCE_MS = 600;
+/** Cloud sync: how long to coalesce realtime change events before pulling. */
+export const CLOUD_REALTIME_PULL_DEBOUNCE_MS = 800;
 export const LS_PENDING_PUSH = 'canvas-cloud-pending-push';
 export const LS_PENDING_DELETE = 'canvas-cloud-pending-delete';
 

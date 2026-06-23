@@ -22,7 +22,12 @@ import {
   putCanvasDocument,
 } from './persistence';
 import type { CanvasDocument, CanvasElement, CanvasState } from '../types';
-import { CLOUD_PUSH_DEBOUNCE_MS, LS_PENDING_PUSH, LS_PENDING_DELETE } from '../constants';
+import {
+  CLOUD_PUSH_DEBOUNCE_MS,
+  CLOUD_REALTIME_PULL_DEBOUNCE_MS,
+  LS_PENDING_PUSH,
+  LS_PENDING_DELETE,
+} from '../constants';
 
 /** Row shape of the `canvases` table. */
 interface CanvasRow {
@@ -36,6 +41,16 @@ interface CanvasRow {
 }
 
 const DEFAULT_NAME = /^Untitled \d+$/;
+
+/**
+ * A blank, never-renamed placeholder canvas (an empty "Untitled N"). These are
+ * created automatically on every fresh device/browser, so we never mirror them
+ * to the cloud — otherwise each device would litter the account with its own
+ * empty canvas and they'd all sync to each other.
+ */
+export function isBlankDefault(doc: CanvasDocument): boolean {
+  return (doc.elements?.length ?? 0) === 0 && DEFAULT_NAME.test(doc.name);
+}
 
 function rowToDoc(row: CanvasRow): CanvasDocument {
   return {
@@ -95,6 +110,14 @@ function persistQueues() {
 type AfterSync = (reapplyCurrent: boolean) => Promise<void> | void;
 let afterSync: AfterSync | null = null;
 
+/** Ids whose local copy was overwritten by a newer cloud copy in the last pull. */
+let lastPulledIds = new Set<string>();
+
+/** True if the most recent merge pulled a newer cloud copy of this canvas. */
+export function wasPulled(id: string): boolean {
+  return lastPulledIds.has(id);
+}
+
 /** documentStore registers here so sync can refresh the in-memory canvas list. */
 export function setAfterSyncHandler(fn: AfterSync) {
   afterSync = fn;
@@ -119,10 +142,17 @@ let busy = false; // serializes flush() and fullSync() — only one talks to the
 /** Queue a canvas to be pushed to the cloud (debounced). */
 export function queuePush(doc: CanvasDocument) {
   if (!isCloudConfigured || !userId()) return;
+  // Don't save empty placeholder canvases to the cloud.
+  if (isBlankDefault(doc)) return;
   pendingPush.add(doc.id);
   pendingDelete.delete(doc.id);
   persistQueues();
   scheduleFlush();
+}
+
+/** True if a canvas has local edits still queued for the cloud. */
+export function hasPendingPush(id: string): boolean {
+  return pendingPush.has(id);
 }
 
 /** Queue a canvas deletion to be tombstoned in the cloud. */
@@ -222,16 +252,27 @@ export async function fullSync(reapplyCurrent = false): Promise<void> {
     const cloudById = new Map(rows.map((r) => [r.id, r]));
 
     // 1) Cloud → local (newer cloud wins; tombstones delete locally).
+    const pulled = new Set<string>();
     for (const row of rows) {
       const local = localById.get(row.id);
       if (row.deleted) {
         if (local) await deleteCanvasDocument(row.id);
         continue;
       }
+      // Clean up blank "Untitled N" rows older builds may have uploaded — we
+      // never push these anymore, so any in the cloud are junk. Tombstone them
+      // so they stop reappearing as duplicate empty canvases across devices.
+      if (isBlankDefault(rowToDoc(row))) {
+        pendingDelete.add(row.id);
+        cloudById.delete(row.id);
+        continue;
+      }
       if (!local || Number(row.updated_at) > local.updatedAt) {
         await putCanvasDocument(rowToDoc(row));
+        pulled.add(row.id);
       }
     }
+    lastPulledIds = pulled;
 
     // 2) Local → cloud (auto-upload guest canvases; locally-newer wins).
     for (const local of localDocs) {
@@ -240,7 +281,7 @@ export async function fullSync(reapplyCurrent = false): Promise<void> {
       if (!row) {
         // Skip empty, never-touched default canvases so new devices don't
         // litter the account with blank "Untitled N" docs.
-        if (local.elements.length > 0 || !DEFAULT_NAME.test(local.name)) {
+        if (!isBlankDefault(local)) {
           pendingPush.add(local.id);
         }
       } else if (!row.deleted && local.updatedAt > Number(row.updated_at)) {
@@ -268,15 +309,76 @@ export function requestFullSync(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Realtime — keep multiple open devices/browsers in sync as edits land.
+// ---------------------------------------------------------------------------
+let realtimeChannel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null;
+let realtimePullTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Coalesce bursts of realtime events into a single pull (retries if busy). */
+function scheduleRealtimePull() {
+  if (realtimePullTimer) clearTimeout(realtimePullTimer);
+  realtimePullTimer = setTimeout(() => {
+    realtimePullTimer = null;
+    // A push/pull is mid-flight — try again shortly so we don't miss the change.
+    if (busy) {
+      scheduleRealtimePull();
+      return;
+    }
+    void fullSync(false);
+  }, CLOUD_REALTIME_PULL_DEBOUNCE_MS);
+}
+
+/** Subscribe to this user's canvas rows so remote edits pull in near-instantly. */
+function startRealtime(): void {
+  if (!supabase || !isCloudConfigured) return;
+  const uid = userId();
+  if (!uid) return;
+  stopRealtime();
+  realtimeChannel = supabase
+    .channel(`canvases:${uid}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: CANVASES_TABLE, filter: `user_id=eq.${uid}` },
+      () => scheduleRealtimePull(),
+    )
+    .subscribe((status) => {
+      // Surfacing this matters: live cross-device sync silently does nothing
+      // unless the table is in the `supabase_realtime` publication (see
+      // CLOUD_SYNC.md). A CHANNEL_ERROR/TIMED_OUT here usually means that SQL
+      // step was missed — sync then only happens on focus/sign-in/"Sync now".
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn(
+          `[cloudSync] Realtime channel ${status}. Live sync is disabled — ` +
+            'ensure `alter publication supabase_realtime add table canvases;` was run.',
+        );
+      }
+    });
+}
+
+/** Tear down the realtime subscription (sign-out). */
+function stopRealtime(): void {
+  if (realtimePullTimer) {
+    clearTimeout(realtimePullTimer);
+    realtimePullTimer = null;
+  }
+  if (realtimeChannel && supabase) {
+    void supabase.removeChannel(realtimeChannel);
+  }
+  realtimeChannel = null;
+}
+
+// ---------------------------------------------------------------------------
 // Auth lifecycle
 // ---------------------------------------------------------------------------
-/** Called when a user signs in: merge, then re-apply the open canvas. */
+/** Called when a user signs in: merge, re-apply the open canvas, go realtime. */
 export async function onSignIn(): Promise<void> {
   await fullSync(true);
+  startRealtime();
 }
 
 /** Called on sign-out: stop syncing and drop this session's pending queue. */
 export function onSignOut(): void {
+  stopRealtime();
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = null;
   pendingPush.clear();

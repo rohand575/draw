@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { AUTOSAVE_DEBOUNCE_MS } from '../constants';
 import { useCanvasStore } from '../store/canvasStore';
-import { useDocumentStore } from '../store/documentStore';
+import { useDocumentStore, isApplyingDocument } from '../store/documentStore';
 import { useElementStore } from '../store/elementStore';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -36,9 +36,13 @@ export function usePersistence() {
     };
 
     const unsubElements = useElementStore.subscribe((state, prev) => {
+      // Skip changes caused by loading a document (open/create/remote pull) —
+      // those aren't user edits and must not be saved/pushed back.
+      if (isApplyingDocument()) return;
       if (state.elements !== prev.elements) scheduleSave();
     });
     const unsubCanvas = useCanvasStore.subscribe((state, prev) => {
+      if (isApplyingDocument()) return;
       if (
         state.offsetX !== prev.offsetX ||
         state.offsetY !== prev.offsetY ||

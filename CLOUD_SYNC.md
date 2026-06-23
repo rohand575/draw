@@ -6,14 +6,27 @@ canvases to Supabase so they follow you across devices.
 
 ## How it works
 
-- **Local-first, cloud-mirror.** IndexedDB stays the fast source of truth.
-  The cloud is a mirror, so the app still works fully offline and stays instant.
+- **Signed in: cloud is authoritative.** While signed in, the cloud's canvas
+  set is the source of truth and the same on every device. IndexedDB is kept as
+  a fast local cache (so the app stays instant and works offline), but it never
+  overrides the cloud: throwaway blank "Untitled N" placeholders that each
+  device makes on first run are pruned on sign-in/sync so all devices converge
+  on exactly the cloud's canvases. (Signed out, the app is purely local-first.)
 - **Push.** Edits autosave to IndexedDB (500 ms), then push to Supabase on a
-  ~2.5 s debounce while signed in.
-- **Pull.** A full two-way merge runs on sign-in, on window focus, and via
-  "Sync now". Per-canvas **last-write-wins** by `updatedAt`.
+  short ~0.6 s debounce while signed in — a drag still coalesces into one write,
+  but changes reach other devices in ~1–2 s.
+- **Pull.** A full two-way merge runs on sign-in, on window focus, via
+  "Sync now", and **in realtime** — a Supabase Realtime subscription pulls
+  changes within ~1 s of another device saving them. Per-canvas
+  **last-write-wins** by `updatedAt`. The open canvas is refreshed live unless
+  you have local edits in flight (those are never clobbered). If the realtime
+  channel can't connect (see below), the app logs a warning and falls back to
+  syncing on focus/sign-in/"Sync now".
 - **First sign-in.** Your existing local canvases are auto-uploaded to the
-  account (empty, never-touched "Untitled N" canvases are skipped).
+  account (no work is lost), then the cloud set takes over. Blank, never-touched
+  "Untitled N" canvases are never synced — they're created fresh on every device,
+  so syncing them would litter the account with duplicate empty canvases. Any
+  such rows left by older builds are cleaned up.
 - **Deletes.** Soft-delete tombstones (`deleted = true`) propagate removals to
   every device instead of letting a deleted canvas resync back.
 - **Offline.** Pending push/delete intents persist in `localStorage` and flush
@@ -43,12 +56,21 @@ canvases to Supabase so they follow you across devices.
      with check (auth.uid() = user_id);
 
    create index canvases_user_idx on canvases (user_id);
+
+   -- Realtime: let signed-in devices receive each other's changes live.
+   alter publication supabase_realtime add table canvases;
    ```
 
 3. Copy `.env.example` to `.env` and fill in **Project URL** and the
    **anon / publishable** key from **Project Settings → API**. Never use the
    `service_role` / secret key in the client.
 4. `npm install` (pulls in `@supabase/supabase-js`), then `npm run dev`.
+
+> **Live sync not working across devices?** Realtime only fires if the
+> `canvases` table is in the `supabase_realtime` publication (the last line of
+> the SQL above). Projects created before that line was added need it run once:
+> `alter publication supabase_realtime add table canvases;`. The app logs a
+> console warning if the realtime channel fails to connect.
 
 Auth uses email + password. Under **Authentication → Email**, the
 "Confirm email" toggle controls whether sign-up requires a verification link;
@@ -70,7 +92,7 @@ as before.
 | `src/lib/supabase.ts` | Supabase client + `isCloudConfigured` gate |
 | `src/store/authStore.ts` | Session state, sign-in/up/out |
 | `src/store/syncStore.ts` | Sync status (idle/syncing/offline/error) |
-| `src/utils/cloudSync.ts` | Push queue, two-way merge, tombstones, offline queue |
+| `src/utils/cloudSync.ts` | Push queue, two-way merge, tombstones, offline queue, realtime |
 | `src/components/auth/AuthDialog.tsx` | Email/password modal |
 | `src/components/auth/AccountButton.tsx` | Account chip + sync status menu |
 | `src/hooks/usePersistence.ts` | Wires autosave + sync lifecycle |
@@ -79,4 +101,5 @@ as before.
 
 - Pulling inline base64 images out of `data` into Supabase Storage (keeps
   documents small and saves egress under heavy image use).
-- Google sign-in; real-time multi-user collaboration.
+- Google sign-in; live multi-user *co-editing* (today's realtime sync is
+  single-user/multi-device last-write-wins, not concurrent collaboration).

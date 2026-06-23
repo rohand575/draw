@@ -3,11 +3,19 @@ import { nanoid } from 'nanoid';
 import type { CanvasDocument, CanvasDocumentMeta } from '../types';
 import {
   deleteCanvasDocument,
+  getAllCanvasDocuments,
   getAllCanvasMetas,
   getCanvasDocument,
   putCanvasDocument,
 } from '../utils/persistence';
-import { queueDelete, queuePush } from '../utils/cloudSync';
+import {
+  queueDelete,
+  queuePush,
+  wasPulled,
+  hasPendingPush,
+  isBlankDefault,
+} from '../utils/cloudSync';
+import { useAuthStore } from './authStore';
 import { useElementStore } from './elementStore';
 import { useCanvasStore } from './canvasStore';
 import { useHistoryStore } from './historyStore';
@@ -45,18 +53,36 @@ function snapshotCurrentDoc(id: string, meta: CanvasDocumentMeta): CanvasDocumen
   };
 }
 
+/**
+ * Set while a document is being loaded into the stores (open/create/remote
+ * pull). Autosave watches the stores for changes; without this guard, applying
+ * a freshly-pulled canvas would look like a local edit and get pushed straight
+ * back — ping-ponging edits between two open devices.
+ */
+let applyingRemote = false;
+
+/** True while {@link applyDocument} is mutating the stores — autosave skips these. */
+export function isApplyingDocument(): boolean {
+  return applyingRemote;
+}
+
 function applyDocument(doc: CanvasDocument) {
-  useElementStore.getState().setElements(doc.elements ?? []);
-  const cs = doc.canvasState;
-  if (cs) {
-    useCanvasStore.getState().loadState({ offsetX: cs.offsetX, offsetY: cs.offsetY, zoom: cs.zoom });
-    if (cs.theme) useCanvasStore.getState().setTheme(cs.theme);
-    if (typeof cs.showGrid === 'boolean' && useCanvasStore.getState().showGrid !== cs.showGrid) {
-      useCanvasStore.getState().toggleGrid();
+  applyingRemote = true;
+  try {
+    useElementStore.getState().setElements(doc.elements ?? []);
+    const cs = doc.canvasState;
+    if (cs) {
+      useCanvasStore.getState().loadState({ offsetX: cs.offsetX, offsetY: cs.offsetY, zoom: cs.zoom });
+      if (cs.theme) useCanvasStore.getState().setTheme(cs.theme);
+      if (typeof cs.showGrid === 'boolean' && useCanvasStore.getState().showGrid !== cs.showGrid) {
+        useCanvasStore.getState().toggleGrid();
+      }
     }
+    useHistoryStore.getState().clear();
+    useToolStore.getState().clearSelection();
+  } finally {
+    applyingRemote = false;
   }
-  useHistoryStore.getState().clear();
-  useToolStore.getState().clearSelection();
 }
 
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
@@ -186,30 +212,55 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   },
 
   refreshAfterSync: async (reapplyCurrent) => {
-    const metas = await getAllCanvasMetas();
     const prevCurrent = get().currentCanvasId;
+    const signedIn = useAuthStore.getState().user != null;
+    let docs = await getAllCanvasDocuments();
+
+    // Cloud-authoritative cleanup. When signed in, the cloud's canvas set is the
+    // source of truth: drop throwaway blank "Untitled N" placeholders that every
+    // device creates on first run but never uploads, so all devices converge on
+    // exactly the same canvases. On sign-in (reapplyCurrent) we converge hard,
+    // replacing even an open blank with a real canvas; on focus/realtime we keep
+    // whatever the user currently has open so a new blank isn't yanked away.
+    if (signedIn && docs.some((d) => !isBlankDefault(d))) {
+      const protectedId = reapplyCurrent ? null : prevCurrent;
+      const blankIds = docs
+        .filter((d) => isBlankDefault(d) && d.id !== protectedId)
+        .map((d) => d.id);
+      if (blankIds.length > 0) {
+        for (const id of blankIds) await deleteCanvasDocument(id);
+        const drop = new Set(blankIds);
+        docs = docs.filter((d) => !drop.has(d.id));
+      }
+    }
 
     // Everything was removed on another device — start fresh.
-    if (metas.length === 0) {
+    if (docs.length === 0) {
       set({ canvasList: [], currentCanvasId: null });
       await get().createCanvas('Untitled 1');
       return;
     }
 
+    const docById = new Map(docs.map((d) => [d.id, d]));
+    const metas: CanvasDocumentMeta[] = docs
+      .map(({ id, name, createdAt, updatedAt }) => ({ id, name, createdAt, updatedAt }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
     set({ canvasList: metas });
 
-    const stillExists = prevCurrent != null && metas.some((m) => m.id === prevCurrent);
-    if (!stillExists) {
-      // The open canvas was deleted elsewhere — open the most recent one.
-      const doc = await getCanvasDocument(metas[0].id);
-      if (doc) {
-        applyDocument(doc);
-        set({ currentCanvasId: doc.id });
-      }
-    } else if (reapplyCurrent) {
-      // Sign-in merge: reflect any pulled changes to the open canvas.
-      const doc = await getCanvasDocument(prevCurrent);
-      if (doc) applyDocument(doc);
+    const current = prevCurrent != null ? docById.get(prevCurrent) : undefined;
+    if (!current) {
+      // The open canvas was deleted/pruned elsewhere — open the most recent one.
+      const doc = docById.get(metas[0].id)!;
+      applyDocument(doc);
+      set({ currentCanvasId: doc.id });
+    } else if (
+      reapplyCurrent ||
+      // Realtime/focus merge: refresh the open canvas if a newer copy arrived
+      // from another device — but only when we have no local edits in flight,
+      // so we never clobber what the user is actively drawing.
+      (wasPulled(prevCurrent!) && !hasPendingPush(prevCurrent!))
+    ) {
+      applyDocument(current);
     }
   },
 }));
