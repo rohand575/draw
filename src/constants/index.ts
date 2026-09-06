@@ -43,6 +43,13 @@ export const IMAGE_PASTE_MAX_DIM = 4096;
 export const MIN_EMBED_WIDTH = 200;
 export const MIN_EMBED_HEIGHT = 150;
 
+/** Mind map layout. */
+export const MINDMAP_HGAP = 64;
+export const MINDMAP_VGAP = 22;
+export const MINDMAP_FONT_SIZE = 20;
+export const MINDMAP_ROOT_FONT_SIZE = 26;
+export const MINDMAP_DEFAULT_LABEL = 'New idea';
+
 export const STROKE_WIDTHS = [1, 2, 3, 4, 6];
 export const UI_STROKE_WIDTHS = [1, 2, 4];
 export const ROUGHNESS_LEVELS = [0, 1, 2, 3];
@@ -99,6 +106,7 @@ export const TOOLS: ToolDef[] = [
   { id: 'arrow', label: 'Arrow', shortcut: 'A' },
   { id: 'freehand', label: 'Pencil', shortcut: 'P' },
   { id: 'text', label: 'Text', shortcut: 'T' },
+  { id: 'mindmap', label: 'Mind map', shortcut: 'M' },
 ];
 
 export const LS_THEME = 'canvas-theme';

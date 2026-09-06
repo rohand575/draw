@@ -22,6 +22,7 @@ const GROUPS: Group[] = [
       ['Arrow', 'A'],
       ['Pencil', 'P'],
       ['Text', 'T'],
+      ['Mind map', 'M'],
     ],
   },
   {
@@ -68,6 +69,16 @@ const GROUPS: Group[] = [
       ['Lock / Unlock', 'Ctrl+L'],
       ['Nudge 1px / 10px', 'Arrows / Shift+Arrows'],
       ['Duplicate-drag', 'Alt+Drag'],
+    ],
+  },
+  {
+    title: 'Mind map',
+    rows: [
+      ['New map (place root)', 'M then click'],
+      ['Add child node', 'Tab'],
+      ['Add sibling node', 'Enter'],
+      ['Rename node', 'F2 / Double-click'],
+      ['Delete node + subtree', 'Del / Backspace'],
     ],
   },
   {

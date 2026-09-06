@@ -22,7 +22,8 @@ export type Tool =
   | 'line'
   | 'arrow'
   | 'freehand'
-  | 'text';
+  | 'text'
+  | 'mindmap';
 
 export interface Point {
   x: number;
@@ -78,6 +79,12 @@ export interface CanvasElement {
   connectorStyle?: ConnectorStyle;
   connectorLabel?: string;
   frameName?: string;
+  /** Mind map: this element is a node (root or child) in a mind-map tree. */
+  isMindMapNode?: boolean;
+  /** Mind map: id of this node's parent node; absent on the root. */
+  mindMapParentId?: string;
+  /** Mind map: this connector is an auto-managed parent→child edge. */
+  isMindMapEdge?: boolean;
 }
 
 export interface Bounds {

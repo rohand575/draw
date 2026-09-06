@@ -16,6 +16,8 @@ import {
   IMAGE_CACHE_MAX,
   MIN_EMBED_HEIGHT,
   MIN_EMBED_WIDTH,
+  MINDMAP_DEFAULT_LABEL,
+  MINDMAP_ROOT_FONT_SIZE,
 } from '../../constants';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useElementStore } from '../../store/elementStore';
@@ -61,6 +63,7 @@ import {
 import { getMeasureCtx, wrapTextToLines } from '../../utils/textWrap';
 import { sanitizeEmbedUrl, sanitizeHyperlink } from '../../utils/urlSafety';
 import { pasteImageBlob } from '../../utils/clipboard';
+import { addMindMapChild, addMindMapSibling, layoutMindMap, measureLabel } from '../../utils/mindmap';
 import { TextEditorOverlay } from './TextEditorOverlay';
 import { EmbedLayer } from './EmbedLayer';
 import { ContextMenu, type ContextMenuState, type DialogKind } from './ContextMenu';
@@ -228,18 +231,49 @@ export function Canvas() {
     const store = useElementStore.getState();
     const el = store.elements.find((x) => x.id === session.id);
     if (!el) return;
-    if (!el.text || el.text.trim() === '') {
+    const empty = !el.text || el.text.trim() === '';
+
+    if (empty && !el.isMindMapNode) {
       store.removeElements([session.id]);
       if (session.isNew) historyActions.popSnapshot();
-    } else {
-      const tool = useToolStore.getState();
-      if (tool.activeTool === 'text' && !tool.lockToolMode) tool.setActiveTool('select');
+      needsRenderRef.current = true;
+      return;
+    }
+
+    if (empty && el.isMindMapNode && session.isNew) {
+      // A brand-new root left blank — treat as a cancelled placement.
+      store.removeElements([session.id]);
+      historyActions.popSnapshot();
+      needsRenderRef.current = true;
+      return;
+    }
+
+    const tool = useToolStore.getState();
+    if ((tool.activeTool === 'text' || tool.activeTool === 'mindmap') && !tool.lockToolMode) {
+      tool.setActiveTool('select');
+    }
+    if (tool.activeTool === 'mindmap') tool.setActiveTool('select');
+
+    if (el.isMindMapNode) {
+      if (empty) {
+        // Existing node emptied — restore a default label rather than vanish.
+        const m = measureLabel(MINDMAP_DEFAULT_LABEL, el.fontSize ?? MINDMAP_ROOT_FONT_SIZE);
+        store.updateElement(el.id, { text: MINDMAP_DEFAULT_LABEL, width: m.width, height: m.height });
+      }
+      layoutMindMap(el.id);
+      tool.setSelectedIds([el.id]);
     }
     needsRenderRef.current = true;
   }, []);
 
   const startTextEditing = useCallback(
-    (existing: CanvasElement | null, wx: number, wy: number, caretIndex: number | null) => {
+    (
+      existing: CanvasElement | null,
+      wx: number,
+      wy: number,
+      caretIndex: number | null,
+      opts?: { mindMapRoot?: boolean }
+    ) => {
       commitTextEditing();
       const store = useElementStore.getState();
       const tool = useToolStore.getState();
@@ -263,13 +297,24 @@ export function Canvas() {
       }
 
       // Container detection: topmost rectangle under the cursor wraps the text.
-      const container = sortedElements().desc.find((el) => {
-        if (el.type !== 'rectangle' || el.locked) return false;
-        const b = getElementBounds(el);
-        return wx >= b.x && wx <= b.x + b.width && wy >= b.y && wy <= b.y + b.height;
-      });
+      // Skipped for mind-map roots, which are free-standing nodes.
+      const container = opts?.mindMapRoot
+        ? undefined
+        : sortedElements().desc.find((el) => {
+            if (el.type !== 'rectangle' || el.locked) return false;
+            const b = getElementBounds(el);
+            return wx >= b.x && wx <= b.x + b.width && wy >= b.y && wy <= b.y + b.height;
+          });
 
       const el = createElement('text', wx, wy, tool.getStyle(), store.getMaxZIndex() + 1);
+      if (opts?.mindMapRoot) {
+        el.isMindMapNode = true;
+        el.fontSize = MINDMAP_ROOT_FONT_SIZE;
+        el.roughness = 0;
+        // Seed a visible label so the click produces an obvious node; the whole
+        // label is selected on edit so the first keystroke replaces it.
+        el.text = MINDMAP_DEFAULT_LABEL;
+      }
       const lh = textLineHeight(el);
       if (container) {
         const cb = getElementBounds(container);
@@ -281,12 +326,53 @@ export function Canvas() {
         el.y = wy - lh / 2;
       }
       el.height = lh;
+      if (opts?.mindMapRoot) {
+        const m = measureLabel(el.text ?? '', el.fontSize ?? MINDMAP_ROOT_FONT_SIZE);
+        el.x = wx - m.width / 2;
+        el.y = wy - m.height / 2;
+        el.width = m.width;
+        el.height = m.height;
+      }
       store.addElement(el);
       tool.clearSelection();
-      setEditing({ id: el.id, wrapContainerId: container?.id ?? null, caretIndex: null, isNew: true });
+      setEditing({
+        id: el.id,
+        wrapContainerId: container?.id ?? null,
+        caretIndex: opts?.mindMapRoot ? -1 : null,
+        isNew: true,
+      });
       needsRenderRef.current = true;
     },
     [commitTextEditing, sortedElements]
+  );
+
+  // Open the label editor when another module (mind-map keyboard ops) asks for
+  // it — bridges the global keyboard hook to this component's editing session.
+  const startTextEditingRef = useRef(startTextEditing);
+  startTextEditingRef.current = startTextEditing;
+  const editRequest = useToolStore((s) => s.editRequest);
+  useEffect(() => {
+    if (!editRequest) return;
+    const el = useElementStore.getState().elements.find((x) => x.id === editRequest.id);
+    if (el) startTextEditingRef.current(el, el.x, el.y, -1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequest]);
+
+  // Tab/Enter inside a mind-map node's editor: commit, then spawn + edit the
+  // next node so the tree can be built without leaving the keyboard.
+  const handleMindMapKey = useCallback(
+    (kind: 'child' | 'sibling') => {
+      const id = editingRef.current?.id;
+      commitTextEditing();
+      if (!id) return;
+      const newId = kind === 'child' ? addMindMapChild(id) : addMindMapSibling(id);
+      if (!newId) return;
+      const tool = useToolStore.getState();
+      tool.setActiveTool('select');
+      tool.setSelectedIds([newId]);
+      tool.requestEdit(newId);
+    },
+    [commitTextEditing]
   );
 
   /** Approximate caret index from a click position inside a text element. */
@@ -563,6 +649,14 @@ export function Canvas() {
           startTextEditing(hit, wx, wy, caretIndexAt(hit, wx, wy));
         } else {
           startTextEditing(null, wx, wy, null);
+        }
+      } else if (tool.activeTool === 'mindmap') {
+        const hit = getTopElementAt(sortedElements().desc, wx, wy, 5 / cs.zoom);
+        if (hit?.isMindMapNode) {
+          // Clicking an existing node just edits its label.
+          startTextEditing(hit, wx, wy, caretIndexAt(hit, wx, wy));
+        } else {
+          startTextEditing(null, wx, wy, null, { mindMapRoot: true });
         }
       } else {
         handleDrawDown(wx, wy);
@@ -1517,6 +1611,7 @@ export function Canvas() {
           wrapContainerId={editing.wrapContainerId}
           caretIndex={editing.caretIndex}
           onCommit={commitTextEditing}
+          onMindMapKey={handleMindMapKey}
         />
       )}
 
