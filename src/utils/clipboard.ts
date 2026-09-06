@@ -30,7 +30,7 @@ function selectNew(els: CanvasElement[]) {
   useToolStore.getState().setActiveTool('select');
 }
 
-/** Decode + downscale a pasted image blob, then place it at the viewport center. */
+/** Decode a pasted image blob (downscaling only if it exceeds the safety cap), then place it at the viewport center. */
 export async function pasteImageBlob(blob: Blob, centerX: number, centerY: number): Promise<boolean> {
   const dataUrl = await new Promise<string | null>((resolve) => {
     const reader = new FileReader();
@@ -61,6 +61,8 @@ export async function pasteImageBlob(blob: Blob, centerX: number, centerY: numbe
     canvas.height = ch;
     const ctx = canvas.getContext('2d');
     if (ctx) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, cw, ch);
       finalData = canvas.toDataURL('image/png');
       w = cw;

@@ -39,7 +39,7 @@ export const LS_PENDING_DELETE = 'canvas-cloud-pending-delete';
 
 export const MAX_HISTORY = 50;
 export const IMAGE_CACHE_MAX = 60;
-export const IMAGE_PASTE_MAX_DIM = 800;
+export const IMAGE_PASTE_MAX_DIM = 4096;
 export const MIN_EMBED_WIDTH = 200;
 export const MIN_EMBED_HEIGHT = 150;
 
