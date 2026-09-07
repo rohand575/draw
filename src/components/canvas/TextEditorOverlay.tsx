@@ -18,9 +18,11 @@ interface Props {
   wrapContainerId: string | null;
   caretIndex: number | null;
   onCommit: () => void;
+  /** Mind-map nodes: Tab commits + adds a child, Enter commits + adds a sibling. */
+  onMindMapKey?: (kind: 'child' | 'sibling') => void;
 }
 
-export function TextEditorOverlay({ element, wrapContainerId, caretIndex, onCommit }: Props) {
+export function TextEditorOverlay({ element, wrapContainerId, caretIndex, onCommit, onMindMapKey }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const offsetX = useCanvasStore((s) => s.offsetX);
@@ -40,8 +42,13 @@ export function TextEditorOverlay({ element, wrapContainerId, caretIndex, onComm
     const ta = textareaRef.current;
     if (!ta) return;
     ta.focus();
-    const idx = caretIndex ?? ta.value.length;
-    ta.setSelectionRange(idx, idx);
+    if (caretIndex === -1) {
+      // Select the whole label so the first keystroke replaces it.
+      ta.setSelectionRange(0, ta.value.length);
+    } else {
+      const idx = caretIndex ?? ta.value.length;
+      ta.setSelectionRange(idx, idx);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -109,6 +116,21 @@ export function TextEditorOverlay({ element, wrapContainerId, caretIndex, onComm
       e.stopPropagation();
       useFindStore.getState().open('text');
       return;
+    }
+    // Mind-map flow: Tab → child, Enter → sibling (Shift+Enter stays a newline).
+    if (element.isMindMapNode && onMindMapKey) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        onMindMapKey('child');
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        onMindMapKey('sibling');
+        return;
+      }
     }
     if (isCode && e.key === 'Tab') {
       e.preventDefault();

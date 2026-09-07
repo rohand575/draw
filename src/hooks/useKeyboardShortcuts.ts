@@ -27,6 +27,7 @@ import {
   zoomToSelection,
 } from '../utils/actions';
 import { copySelectionToClipboard, pasteFromClipboard } from '../utils/clipboard';
+import { addMindMapChild, addMindMapSibling, deleteMindMapNode } from '../utils/mindmap';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -168,6 +169,47 @@ export function useKeyboardShortcuts() {
       }
 
       if (ctrl) return; // unhandled ctrl combos stay native
+
+      // --- Mind map node ops (Tab child / Enter sibling / Del subtree) -------
+      // Intercepted before the generic Tab/Delete handlers below.
+      {
+        const sel = useToolStore.getState().selectedIds;
+        if (sel.length === 1) {
+          const node = useElementStore.getState().elements.find((el) => el.id === sel[0]);
+          if (node?.isMindMapNode) {
+            const selectAndEdit = (id: string | null) => {
+              if (!id) return;
+              const t = useToolStore.getState();
+              t.setActiveTool('select');
+              t.setSelectedIds([id]);
+              t.requestEdit(id);
+            };
+            if (key === 'tab') {
+              e.preventDefault();
+              selectAndEdit(addMindMapChild(node.id));
+              return;
+            }
+            if (key === 'enter') {
+              e.preventDefault();
+              selectAndEdit(addMindMapSibling(node.id));
+              return;
+            }
+            if (key === 'f2') {
+              e.preventDefault();
+              useToolStore.getState().requestEdit(node.id);
+              return;
+            }
+            if (key === 'delete' || key === 'backspace') {
+              e.preventDefault();
+              const parentId = deleteMindMapNode(node.id);
+              const t = useToolStore.getState();
+              if (parentId) t.setSelectedIds([parentId]);
+              else t.clearSelection();
+              return;
+            }
+          }
+        }
+      }
 
       // --- Delete / escape / tab ---------------------------------------------
       if (key === 'delete' || key === 'backspace') {

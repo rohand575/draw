@@ -103,6 +103,9 @@ export function sanitizeElement(raw: unknown): CanvasElement | null {
   }
   if (typeof r.connectorLabel === 'string') el.connectorLabel = r.connectorLabel.slice(0, 500);
   if (typeof r.frameName === 'string') el.frameName = r.frameName.slice(0, 200);
+  if (typeof r.isMindMapNode === 'boolean') el.isMindMapNode = r.isMindMapNode;
+  if (typeof r.isMindMapEdge === 'boolean') el.isMindMapEdge = r.isMindMapEdge;
+  if (typeof r.mindMapParentId === 'string' && r.mindMapParentId) el.mindMapParentId = r.mindMapParentId;
 
   return el;
 }
@@ -139,6 +142,9 @@ export function sanitizeElements(raw: unknown, existingIds?: Set<string>): Canva
         el.endBinding = { ...el.endBinding, elementId: idRemap.get(el.endBinding.elementId)! };
       }
       if (el.groupId && idRemap.has(el.groupId)) el.groupId = idRemap.get(el.groupId);
+      if (el.mindMapParentId && idRemap.has(el.mindMapParentId)) {
+        el.mindMapParentId = idRemap.get(el.mindMapParentId);
+      }
     }
   }
   return out;
@@ -177,6 +183,10 @@ export function cloneElementsForPaste(
     if (clone.endBinding) {
       const mapped = idMap.get(clone.endBinding.elementId);
       clone.endBinding = mapped ? { ...clone.endBinding, elementId: mapped } : undefined;
+    }
+    if (clone.mindMapParentId) {
+      // Keep the link only when the parent was copied too; else detach into a root.
+      clone.mindMapParentId = idMap.get(clone.mindMapParentId);
     }
     return clone;
   });

@@ -12,6 +12,7 @@ export type IconName =
   | 'arrow'
   | 'freehand'
   | 'text'
+  | 'mindmap'
   | 'undo'
   | 'redo'
   | 'trash'
@@ -65,6 +66,14 @@ const paths: Record<IconName, JSX.Element> = {
   arrow: <path d="M5 19L18 6m0 0h-7m7 0v7" />,
   freehand: <path d="M3.5 20.5c4-1 4.5-2 3-4s-1-4.5 1.5-5.5 4 .5 5-2 .5-4.5 3.5-5.5" />,
   text: <path d="M5 6V4h14v2M12 4v16m-3 0h6" />,
+  mindmap: (
+    <>
+      <rect x="2.5" y="9.5" width="6.5" height="5" rx="1.5" />
+      <rect x="15" y="4" width="6.5" height="4.5" rx="1.5" />
+      <rect x="15" y="15.5" width="6.5" height="4.5" rx="1.5" />
+      <path d="M9 12h3.5M12.5 12V6.25H15M12.5 12v5.75H15" />
+    </>
+  ),
   undo: <path d="M8 5L3.5 9.5 8 14M3.5 9.5H15a5.5 5.5 0 0 1 0 11h-3" />,
   redo: <path d="M16 5l4.5 4.5L16 14m4.5-4.5H9a5.5 5.5 0 0 0 0 11h3" />,
   trash: <path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13.5h9l1-13.5M10 11v6m4-6v6" />,

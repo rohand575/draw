@@ -35,6 +35,10 @@ interface ToolStore extends StyleSettings {
   removeSelectedId: (id: string) => void;
   clearSelection: () => void;
 
+  /** One-shot request for the canvas to open the text editor on an element. */
+  editRequest: { id: string; nonce: number } | null;
+  requestEdit: (id: string) => void;
+
   getStyle: () => StyleSettings;
 }
 
@@ -69,6 +73,9 @@ export const useToolStore = create<ToolStore>((set, get) => ({
     set((s) => (s.selectedIds.includes(id) ? s : { selectedIds: [...s.selectedIds, id] })),
   removeSelectedId: (id) => set((s) => ({ selectedIds: s.selectedIds.filter((x) => x !== id) })),
   clearSelection: () => set({ selectedIds: [] }),
+
+  editRequest: null,
+  requestEdit: (id) => set((s) => ({ editRequest: { id, nonce: (s.editRequest?.nonce ?? 0) + 1 } })),
 
   getStyle: () => {
     const s = get();
